@@ -39,48 +39,67 @@ def terminate_string(s):
     return s if s[-1:] == terminal_char else s + terminal_char
 
 
-def query(bwt, counts, ranks, suffix_array, pattern):
-    reverse_pattern = pattern[::-1]
-    start_index, end_index = char_range(counts, reverse_pattern[0])
-    for c in reverse_pattern[1:]:
-        first_rank, count = find_preceders(bwt[start_index: end_index], ranks[start_index: end_index], c)
-        if count == 0:
-            return []
-        else:
-            start_index = first_occurrence(counts, c) + first_rank
-            end_index = start_index + count
-    return suffix_array[start_index:end_index]
+class FColumn:
+    def __init__(self, count, first_occurrence):
+        self.count = count
+        self._first_occurrence = first_occurrence
 
+    def char_range(self, c):
+        return self.get_first_occurrence(c), self.get_first_occurrence(c) + self.count[c]
 
-def find_preceders(sub_bwt, sub_ranks, c):
-    first_index = sub_bwt.find(c)
-    if first_index == -1:
-        return 0, 0
-    else:
-        return sub_ranks[first_index], sub_bwt.count(c, first_index)
-
-
-def char_range(counts, char):
-    """ Returns range of indices in F array inside which char is contained.
-     The range is in form [start, end) i.e. does not include end index """
-    start_index = first_occurrence(counts, char)
-    return start_index, start_index + counts[char]
-
-
-def first_occurrence(counts, char):
-    return sum(count[1] for count in counts.items() if count[0] < char)
+    def get_first_occurrence(self, c):
+        return self._first_occurrence.get(c, 0)
 
 
 class FMIndex:
-    def __init__(self, text):
-        text_terminated = terminate_string(text)
-        self.char_count = count_characters(text_terminated)
-        self.suffix_array = suffix_array_manber_myers(text_terminated)
-        self.bwt = bw_transform(text_terminated, self.suffix_array)
-        self.ranks = calculate_ranks(self.bwt)
+    def __init__(self, bwt, sa, ranks, f_column):
+        self._bwt = bwt
+        self._sa = sa
+        self._ranks = ranks
+        self._f_column = f_column
+
+    def _find_preceders(self, c, start, end):
+        first_index = self._bwt.find(c, start, end)
+        if first_index == -1:
+            return 0, 0
+        else:
+            return self._ranks[first_index], self._bwt.count(c, first_index, end)
 
     def query(self, pattern):
-        return query(self.bwt, self.char_count, self.ranks, self.suffix_array, pattern)
+        reverse_pattern = pattern[::-1]
+        start_index, end_index = self._f_column.char_range(reverse_pattern[0])
+        for c in reverse_pattern[1:]:
+            first_rank, count = self._find_preceders(c, start_index, end_index)
+            if count == 0:
+                return []
+            else:
+                start_index = self._f_column.get_first_occurrence(c) + first_rank
+                end_index = start_index + count
+        return self._sa[start_index:end_index]
+
+
+def calculate_first_occurrences(counts):
+    first_occurrences = {}
+    s = 0
+    for k, v in sorted(counts.items()):
+        first_occurrences[k] = s
+        s += v
+    return first_occurrences
+
+
+def create_f_column(text):
+    count = count_characters(text)
+    first_occurrence = calculate_first_occurrences(count)
+    return FColumn(count, first_occurrence)
+
+
+def create_fm_index(text):
+    t = terminate_string(text)
+    sa = suffix_array_manber_myers(t)
+    bwt = bw_transform(t, sa)
+    ranks = calculate_ranks(bwt)
+    f_column = create_f_column(t)
+    return FMIndex(bwt, sa, ranks, f_column)
 
 
 if __name__ == "__main__":
@@ -108,7 +127,7 @@ if __name__ == "__main__":
             patterns = f.read().splitlines()
 
     # search for patterns
-    fm_index = FMIndex(text)
+    fm_index = create_fm_index(text)
     results = [fm_index.query(pattern) for pattern in patterns]
 
     # write results
