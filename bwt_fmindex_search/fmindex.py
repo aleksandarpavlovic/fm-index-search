@@ -1,7 +1,8 @@
-from collections import Counter
-from bwt_fmindex_search.sa import *
-import os
 import argparse
+import os
+from collections import Counter
+
+from bwt_fmindex_search.sa import *
 
 # Using \0 instead of $ for terminal character because latter would not work with strings containing spaces
 terminal_char = '\0'
