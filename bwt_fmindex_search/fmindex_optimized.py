@@ -10,7 +10,7 @@ terminal_char = '\0'
 def bw_transform(text, sa):
     """ Returns BWT(text) """
     bw = []
-    for si in sa.array:
+    for si in sa:
         if si == 0:
             bw.append(terminal_char)
         else:
@@ -55,11 +55,12 @@ def query(bwt, f_column, tally, suffix_array, pattern):
 
 
 def find_suffix(sa, bwt, tally, f_column, index):
-    if index % sa.factor == 0:
-        return sa.array[index // sa.factor]
+    suffix = sa.sample.get(index, None)
+    if suffix is not None:
+        return suffix
     else:
         rank = find_tally(bwt, index, tally, bwt[index]) - 1
-        return 1 + find_suffix(sa, bwt, tally, f_column.first_occurrence(bwt[index]) + rank)
+        return 1 + find_suffix(sa, bwt, tally, f_column, f_column.first_occurrence(bwt[index]) + rank)
 
 
 def find_preceders(bwt, start_index, end_index, tally, c):
@@ -76,8 +77,7 @@ def find_tally(bwt, index, tally, c):
         return tally.ranks[c][index // tally.factor]
     else:
         count_back = index % tally.factor <= tally.factor // 2
-        sub_bwt = bwt[round_down(index, tally.factor) + 1: index + 1] if count_back else bwt[index: round_up(index,
-                                                                                                             tally.factor)]
+        sub_bwt = bwt[round_down(index, tally.factor) + 1: index + 1] if count_back else bwt[index + 1: min(len(bwt), round_up(index, tally.factor) + 1)]
         if count_back:
             return tally.ranks[c][index // tally.factor] + sub_bwt.count(c)
         else:
@@ -113,6 +113,11 @@ def create_ranks_tally(bwt, tally_factor):
                 if not tally[k]:
                     tally[k].extend([0] * (i // tally_factor))
                 tally[k].append(v)
+    # for search simplicity add additional tally row
+    for k, v in count.items():
+        if not tally[k]:
+            tally[k].extend([0] * ((len(bwt) - 1) // tally_factor + 1))
+        tally[k].append(v)
     return tally
 
 
@@ -123,6 +128,14 @@ def positive_int(value):
     return ivalue
 
 
+def create_sa_sample(sa, factor):
+    sample = {}
+    for i in range(len(sa)):
+        if sa[i] % factor == 0:
+            sample[i] = sa[i]
+    return sample
+
+
 class Tally:
     def __init__(self, bwt, factor):
         self.factor = factor
@@ -131,8 +144,7 @@ class Tally:
 
 class SuffixArray:
     def __init__(self, text, factor):
-        self.factor = factor
-        self.array = suffix_array_manber_myers(text)[::factor]
+        self.sample = create_sa_sample(suffix_array_manber_myers(text), factor)
 
 class FColumn:
     def __init__(self, text):
@@ -151,7 +163,7 @@ class FMIndex:
         text_terminated = terminate_string(text)
         self.f_column = FColumn(text_terminated)
         self.suffix_array = SuffixArray(text_terminated, sa_factor)
-        self.bwt = bw_transform(text_terminated, self.suffix_array)
+        self.bwt = bw_transform(text_terminated, suffix_array_manber_myers(text_terminated))
         self.tally = Tally(self.bwt, tally_factor)
 
     def query(self, pattern):
@@ -189,7 +201,7 @@ if __name__ == "__main__":
             patterns = f.read().splitlines()
 
     # search for patterns
-    fm_index = FMIndex(text)
+    fm_index = FMIndex(text, sa_factor, tally_factor)
     results = [fm_index.query(pattern) for pattern in patterns]
 
     # write results
