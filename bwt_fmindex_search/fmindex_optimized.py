@@ -54,6 +54,72 @@ def calculate_first_occurrences(counts):
     return first_occurrences
 
 
+class Tally:
+    def __init__(self, ranks, factor):
+        self.ranks = ranks
+        self.factor = factor
+
+
+class FColumn:
+    def __init__(self, counts, zero_rank_indices):
+        self._counts = counts
+        self._zero_rank_indices = zero_rank_indices
+
+    def char_range(self, c):
+        return self.first_occurrence(c), self.first_occurrence(c) + self._counts[c]
+
+    def first_occurrence(self, c):
+        return self._zero_rank_indices.get(c, 0)
+
+
+class FMIndex:
+    def __init__(self, bwt, sa_sample, tally, f_column):
+        self._bwt = bwt
+        self._sa_sample = sa_sample
+        self._tally = tally
+        self._f_column = f_column
+
+    def query(self, pattern):
+        reverse_pattern = pattern[::-1]
+        start_index, end_index = self._f_column.char_range(reverse_pattern[0])
+        if start_index == end_index:
+            return []
+        for c in reverse_pattern[1:]:
+            first_rank, count = self._find_preceders(start_index, end_index, c)
+            if count == 0:
+                return []
+            else:
+                start_index = self._f_column.first_occurrence(c) + first_rank
+                end_index = start_index + count
+        return [self._find_suffix(i) for i in range(start_index, end_index)]
+
+    def _find_preceders(self, start_index, end_index, c):
+        first_tally = self._find_tally(start_index - 1, c)
+        last_tally = self._find_tally(end_index - 1, c)
+        return first_tally, last_tally - first_tally
+
+    def _find_tally(self, index, c):
+        if not self._tally.ranks[c]:
+            return -1
+        if index % self._tally.factor == 0:
+            return self._tally.ranks[c][index // self._tally.factor]
+        else:
+            count_back = index % self._tally.factor <= self._tally.factor // 2
+            sub_bwt = self._bwt[round_down(index, self._tally.factor) + 1: index + 1] if count_back else self._bwt[index + 1: min(len(self._bwt), round_up(index, self._tally.factor) + 1)]
+            if count_back:
+                return self._tally.ranks[c][index // self._tally.factor] + sub_bwt.count(c)
+            else:
+                return self._tally.ranks[c][index // self._tally.factor + 1] - sub_bwt.count(c)
+
+    def _find_suffix(self, index):
+        suffix = self._sa_sample.get(index, None)
+        if suffix is not None:
+            return suffix
+        else:
+            rank = self._find_tally(index, self._bwt[index]) - 1
+            return 1 + self._find_suffix(self._f_column.first_occurrence(self._bwt[index]) + rank)
+
+
 def create_ranks_tally(bwt, tally_factor):
     """ Creates tally matrix containing only every tally_factor-th rank of a character"""
     count = Counter()
@@ -80,77 +146,6 @@ def create_sa_sample(sa, factor):
         if sa[i] % factor == 0:
             sample[i] = sa[i]
     return sample
-
-
-class Tally:
-    def __init__(self, ranks, factor):
-        self.ranks = ranks
-        self.factor = factor
-
-
-class SuffixArray:
-    def __init__(self, text, factor):
-        self.sample = create_sa_sample(suffix_array_manber_myers(text), factor)
-
-
-class FColumn:
-    def __init__(self, counts, zero_rank_indices):
-        self.counts = counts
-        self.zero_rank_indices = zero_rank_indices
-
-    def char_range(self, c):
-        return self.first_occurrence(c), self.first_occurrence(c) + self.counts[c]
-
-    def first_occurrence(self, c):
-        return self.zero_rank_indices.get(c, 0)
-
-
-class FMIndex:
-    def __init__(self, bwt, sa_sample, tally, f_column):
-        self.bwt = bwt
-        self.sa_sample = sa_sample
-        self.tally = tally
-        self.f_column = f_column
-
-    def query(self, pattern):
-        reverse_pattern = pattern[::-1]
-        start_index, end_index = self.f_column.char_range(reverse_pattern[0])
-        if start_index == end_index:
-            return []
-        for c in reverse_pattern[1:]:
-            first_rank, count = self._find_preceders(start_index, end_index, c)
-            if count == 0:
-                return []
-            else:
-                start_index = self.f_column.first_occurrence(c) + first_rank
-                end_index = start_index + count
-        return [self._find_suffix(i) for i in range(start_index, end_index)]
-
-    def _find_preceders(self, start_index, end_index, c):
-        first_tally = self._find_tally(start_index - 1, c)
-        last_tally = self._find_tally(end_index - 1, c)
-        return first_tally, last_tally - first_tally
-
-    def _find_tally(self, index, c):
-        if not self.tally.ranks[c]:
-            return -1
-        if index % self.tally.factor == 0:
-            return self.tally.ranks[c][index // self.tally.factor]
-        else:
-            count_back = index % self.tally.factor <= self.tally.factor // 2
-            sub_bwt = self.bwt[round_down(index, self.tally.factor) + 1: index + 1] if count_back else self.bwt[index + 1: min(len(self.bwt), round_up(index, self.tally.factor) + 1)]
-            if count_back:
-                return self.tally.ranks[c][index // self.tally.factor] + sub_bwt.count(c)
-            else:
-                return self.tally.ranks[c][index // self.tally.factor + 1] - sub_bwt.count(c)
-
-    def _find_suffix(self, index):
-        suffix = self.sa_sample.get(index, None)
-        if suffix is not None:
-            return suffix
-        else:
-            rank = self._find_tally(index, self.bwt[index]) - 1
-            return 1 + self._find_suffix(self.f_column.first_occurrence(self.bwt[index]) + rank)
 
 
 def create_f_column(text):

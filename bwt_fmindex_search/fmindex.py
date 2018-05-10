@@ -42,11 +42,11 @@ def terminate_string(s):
 
 class FColumn:
     def __init__(self, count, first_occurrence):
-        self.count = count
+        self._count = count
         self._first_occurrence = first_occurrence
 
     def char_range(self, c):
-        return self.get_first_occurrence(c), self.get_first_occurrence(c) + self.count[c]
+        return self.get_first_occurrence(c), self.get_first_occurrence(c) + self._count[c]
 
     def get_first_occurrence(self, c):
         return self._first_occurrence.get(c, 0)
