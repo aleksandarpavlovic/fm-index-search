@@ -194,7 +194,7 @@ if __name__ == "__main__":
         print("File could not be found on path " + patterns_path)
     else:
         with open(text_path, 'r') as f:
-            text = f.read()
+            text = ''.join(f.read().splitlines())
         with open(patterns_path, 'r') as f:
             patterns = f.read().splitlines()
 
