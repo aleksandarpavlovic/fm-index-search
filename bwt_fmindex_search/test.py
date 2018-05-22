@@ -1,4 +1,4 @@
-from bwt_fmindex_search.fmindex import *
+from fmindex import *
 
 # Test suffix array functions
 

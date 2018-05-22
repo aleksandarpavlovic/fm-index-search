@@ -1,6 +1,7 @@
 import time
-from bwt_fmindex_search.fmindex_optimized import *
-from bwt_fmindex_search.util import *
+
+from fmindex_optimized import *
+from util import *
 
 sa_factors = [4, 16, 64, 256]
 tally_factors = [8, 32, 128, 512]
