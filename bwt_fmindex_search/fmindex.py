@@ -67,6 +67,8 @@ class FMIndex:
             return self._ranks[first_index], self._bwt.count(c, first_index, end)
 
     def query(self, pattern):
+        if not pattern:
+            return []
         reverse_pattern = pattern[::-1]
         start_index, end_index = self._f_column.char_range(reverse_pattern[0])
         for c in reverse_pattern[1:]:

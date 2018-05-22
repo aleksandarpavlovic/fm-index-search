@@ -30,12 +30,12 @@ if __name__ == "__main__":
     with open(input_path, 'r') as input_file, open(patterns_path, 'r') as pattern_file:
         text = read_fasta_file(input_file)
         patterns = pattern_file.read().splitlines()
-    start = time.process_time()
     sa = suffix_array_manber_myers(text)
-    end = time.process_time()
-    print("sa build: " + str(end - start))
     bwt = bw_transform(text, sa)
+    bwt_size = get_size(bwt)
     f_column = create_f_column(text)
+    f_column_size = get_size(f_column._zero_rank_indices) + get_size(f_column._counts)
+
 
     results = []
     for sa_factor in sa_factors:
@@ -44,12 +44,12 @@ if __name__ == "__main__":
         for tally_factor in tally_factors:
             tally = create_tally(bwt, tally_factor)
             fm_index = FMIndex(bwt, sa_sample, tally, f_column)
-            tally_size = get_size(tally)
+            tally_size = get_size(tally.ranks)
             for pattern in patterns:
                 start_time = time.process_time()
                 query_count = fm_index.query(pattern)
                 end_time = time.process_time()
-                results.append((sa_factor, tally_factor, pattern, sa_sample_size, tally_size, get_size(fm_index), end_time - start_time))
+                results.append((sa_factor, tally_factor, pattern, sa_sample_size, tally_size, sa_sample_size + tally_size + bwt_size + f_column_size, end_time - start_time))
     with open(output_path, 'w') as f:
         f.writelines("\n".join([" ".join(str(e) for e in result) for result in results]))
 
