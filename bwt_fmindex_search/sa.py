@@ -10,7 +10,7 @@ def suffix_array_naive(text):
     return map(lambda x: x[1], satups)
 
 
-def sort_bucket(str, bucket, bucket_level=0, keylen=4):
+def sort_bucket(str, bucket, bucket_level=0, keylen=6):
     d = defaultdict(list)
     for i in bucket:
         key = str[i+bucket_level : i+bucket_level+keylen]
@@ -19,7 +19,7 @@ def sort_bucket(str, bucket, bucket_level=0, keylen=4):
     for k,v in sorted(d.items()):
         if len(v) > 1:
             result += sort_bucket(str, v, bucket_level + keylen, keylen*2)
-        else:
+        elif v:
             result.append(v[0])
     return result
 
