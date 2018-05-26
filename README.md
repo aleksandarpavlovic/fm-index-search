@@ -16,3 +16,6 @@ Run fmindex_optimized.py with following arguments:
   **--tally_factor**   *optional argument. defines tally matrix degree of compression*  
   
 You can find sample files in **data** directory
+
+## Presentation
+Presentation can be found [here] (https://docs.google.com/presentation/d/1I7S8K_UeHsi7_kbph-koO5cQ94C4KhDzTMktHblMorQ/edit?usp=sharing)
